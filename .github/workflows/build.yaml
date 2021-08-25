@@ -1,0 +1,32 @@
+name: Build Agent
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          install: >-
+            base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-go
+            mingw-w64-x86_64-libvpx
+
+      - shell: msys2 {0}
+        run: go build -tags "vp8enc" cmd/agent.go
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          path: agent.exe
+      
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
