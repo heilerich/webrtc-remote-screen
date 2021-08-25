@@ -18,7 +18,9 @@ jobs:
             mingw-w64-x86_64-libvpx
 
       - shell: msys2 {0}
-        run: go build -tags "vp8enc" cmd/agent.go
+        run: |
+          go mod tidy
+          go build -tags "vp8enc" cmd/agent.go
       
       - name: Upload artifact
         uses: actions/upload-artifact@v2
