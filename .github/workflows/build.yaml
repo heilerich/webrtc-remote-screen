@@ -17,18 +17,49 @@ jobs:
             mingw-w64-x86_64-go
             mingw-w64-x86_64-libvpx
 
-      - shell: msys2 {0}
+      - name: Build agent
+        shell: msys2 {0}
         run: |
           go mod tidy
           go build -tags "vp8enc" cmd/agent.go
+          
+      - name: Copy binaries
+        shell: msys2 {0}
+        run: |
+          mkdir out
+          cp agent.exe out/
+
+          BINDIR="out"
+          EXE="$BINDIR/agent.exe"
+
+          paths=("/mingw64/bin")
+
+          function findAndCopyDLL() {
+              for i in "${paths[@]}"
+              do
+                  FILE="$i/$1"
+                  if [ -f $FILE ]; then
+                     cp $FILE $BINDIR
+                     echo "Found $1 in $i"
+                     copyForOBJ $FILE
+                     return 0
+                  fi
+              done
+
+              return 1
+          }
+
+          function copyForOBJ() {
+              dlls=`objdump -p $1 | grep 'DLL Name:' | sed -e "s/\t*DLL Name: //g"`
+              while read -r filename; do
+                  findAndCopyDLL $filename || echo "Unable to find $filename"
+              done <<< "$dlls"
+          }
+
+          copyForOBJ $EXE
       
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          path: agent.exe
-      
-      - name: Setup tmate session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+          name: agent-binaries
+          path: out/*
